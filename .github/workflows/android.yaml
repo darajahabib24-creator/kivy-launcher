@@ -1,0 +1,116 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      ANDROIDSDK: /home/runner/android-sdk
+      ANDROIDNDK: /home/runner/android-sdk/ndk/25.2.9519653
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up host Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Android SDK and p4a build files
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/runner/android-sdk
+            /home/runner/.p4a
+          key: p4a-armv7-android33-ndk25b-${{ runner.os }}
+
+      - name: Install Android SDK and NDK Dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake build-essential cmake git libffi-dev libltdl-dev \
+            libncurses5-dev libncursesw5-dev libssl-dev libtinfo6 libtool \
+            nasm pkg-config unzip zlib1g-dev
+
+          mkdir -p "$ANDROIDSDK/cmdline-tools"
+          if [[ ! -x "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" ]]; then
+            # FIXED: Updated URL to use the correct verified 15859902 release string
+            curl -fsSL \
+              https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip \
+              -o "$RUNNER_TEMP/android-command-line-tools.zip"
+            mkdir -p "$RUNNER_TEMP/android-command-line-tools"
+            unzip -q "$RUNNER_TEMP/android-command-line-tools.zip" -d "$RUNNER_TEMP/android-command-line-tools"
+            rm -rf "$ANDROIDSDK/cmdline-tools/latest"
+            mv "$RUNNER_TEMP/android-command-line-tools/cmdline-tools" "$ANDROIDSDK/cmdline-tools/latest"
+          fi
+
+          echo "$ANDROIDSDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROIDSDK/platform-tools" >> "$GITHUB_PATH"
+          yes | "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROIDSDK" --licenses >/dev/null || true
+          "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROIDSDK" \
+            "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+
+      - name: Install python-for-android
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'Cython==0.29.36' 'python-for-android==2024.1.21'
+
+      - name: Build APK with python-for-android (p4a)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/launcher-private" "$HOME/.p4a"
+          
+          # Copy your repository codebase into the package workspace staging area
+          cp main.py "$RUNNER_TEMP/launcher-private/main.py"
+          cp -r launcher "$RUNNER_TEMP/launcher-private/"
+          cp -r art "$RUNNER_TEMP/launcher-private/"
+          cp -r data "$RUNNER_TEMP/launcher-private/"
+          
+          p4a apk \
+            --private "$RUNNER_TEMP/launcher-private" \
+            --package org.kivy.launcher \
+            --name "Kivy Launcher" \
+            --version 0.1 \
+            --bootstrap sdl2 \
+            --requirements 'python3,kivy,android' \
+            --arch armeabi-v7a \
+            --android-api 33 \
+            --ndk-api 21 \
+            --sdk-dir "$ANDROIDSDK" \
+            --ndk-dir "$ANDROIDNDK" \
+            --storage-dir "$HOME/.p4a" \
+            --orientation portrait \
+            --permission INTERNET \
+            --permission ACCESS_NETWORK_STATE \
+            --permission WAKE_LOCK \
+            --permission MANAGE_EXTERNAL_STORAGE \
+            --permission READ_MEDIA_IMAGES \
+            --permission READ_MEDIA_VIDEO \
+            --permission POST_NOTIFICATIONS \
+            
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kivy-launcher-apk
+          path: '**/*.apk'
+          if-no-files-found: error
+          retention-days: 14
