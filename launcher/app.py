@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import os
+from kivy.clock import Clock
+from kivy.utils import platform
 from datetime import datetime
 from kivy.lang import Builder
 from kivy.app import App
-from kivy.utils import platform
 from kivy.properties import ListProperty, BooleanProperty
 from glob import glob
 from os.path import dirname, join, exists
