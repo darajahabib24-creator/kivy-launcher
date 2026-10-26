@@ -212,7 +212,7 @@ android.accept_sdk_license = True
 #ios.codesign.release = %(ios.codesign.debug)s
 
 # (list) Permissions
-[app]
+
 
 # Other app settings go here...
 
