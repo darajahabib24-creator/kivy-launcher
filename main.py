@@ -9,6 +9,9 @@ from kivy.resources import resource_add_path
 # ABSOLUTE PATH FIX
 # Forces Kivy and Python to register the correct asset directories on launch
 # =============================================================================
+os.environ['KIVY_GL_BACKEND'] = 'sdl2'
+os.environ['KIVY_GLES_LIMITS'] = '1'
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(CURRENT_DIR)
 resource_add_path(CURRENT_DIR)
