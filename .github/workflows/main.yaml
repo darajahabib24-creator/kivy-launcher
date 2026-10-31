@@ -47,6 +47,7 @@ jobs:
             nasm pkg-config unzip zlib1g-dev
             
           cd ${{ github.workspace }}
+          rm -rf .buildozer/android/platform/
           buildozer android clean
           buildozer -v android debug
 
