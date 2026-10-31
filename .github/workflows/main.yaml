@@ -47,7 +47,8 @@ jobs:
             nasm pkg-config unzip zlib1g-dev
             
           cd ${{ github.workspace }}
-          buildozer android debug
+          buildozer android clean
+          buildozer -v android debug
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
