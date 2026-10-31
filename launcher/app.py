@@ -9,7 +9,12 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
+from kivy.resources import resource_add_path
 
+CUR_DIR = os.path.dirname(__file__)
+resource_add_path(CUR_DIR)
+resource_add_path(os.path.join(CUR_DIR, 'launcher'))
+resource_add_path(os.path.join(CUR_DIR, 'data'))
 
 STORAGE_ROOT = "/storage/emulated/0/kivy"
 
